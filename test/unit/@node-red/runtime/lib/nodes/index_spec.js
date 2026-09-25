@@ -25,6 +25,7 @@ var index = NR_TEST_UTILS.require("@node-red/runtime/lib/nodes/index");
 var flows = NR_TEST_UTILS.require("@node-red/runtime/lib/flows");
 var registry = NR_TEST_UTILS.require("@node-red/registry")
 var Node = NR_TEST_UTILS.require("@node-red/runtime/lib/nodes/Node");
+var utilEvents = NR_TEST_UTILS.require("@node-red/util").events;
 
 describe("red/nodes/index", function() {
     before(function() {
@@ -397,6 +398,62 @@ describe("red/nodes/index", function() {
 
                 done();
             }).catch(function(err) {
+                done(err);
+            });
+        });
+    });
+
+    describe('emits add/remove events for modules providing both nodes and plugins', function() {
+        var nodeSet = {id:"mixed/mixed-node",name:"mixed-node",types:["mixed-node-type"]};
+        var pluginSet = {id:"mixed/mixed-plugin",name:"mixed-plugin",plugins:[{id:"mixed-plugin-x"}]};
+        var mixedInfo = {name:"mixed",user:true,nodes:[nodeSet],plugins:[pluginSet]};
+        var emitted;
+
+        beforeEach(function() {
+            emitted = {};
+            utilEvents.on("runtime-event", capture);
+            function capture(ev) { emitted[ev.id] = ev.payload; }
+            this.capture = capture;
+            sinon.stub(registry,"getModuleInfo").callsFake(function() { return mixedInfo; });
+            sinon.stub(flows,"checkTypeInUse");
+        });
+        afterEach(function() {
+            utilEvents.removeListener("runtime-event", this.capture);
+            registry.getModuleInfo.restore();
+            flows.checkTypeInUse.restore();
+        });
+
+        it('emits both node/added and plugin/added on install', function(done) {
+            sinon.stub(registry,"installModule").callsFake(function() {
+                return Promise.resolve(Object.assign({},mixedInfo));
+            });
+            index.init(runtime);
+            index.installModule("mixed").then(function() {
+                emitted.should.have.property("node/added");
+                emitted["node/added"].should.eql([nodeSet]);
+                emitted.should.have.property("plugin/added");
+                emitted["plugin/added"].should.eql([pluginSet]);
+                registry.installModule.restore();
+                done();
+            }).catch(function(err) {
+                registry.installModule.restore();
+                done(err);
+            });
+        });
+
+        it('emits node/removed carrying both node and plugin sets on uninstall', function(done) {
+            sinon.stub(registry,"uninstallModule").callsFake(function() {
+                return Promise.resolve([nodeSet,pluginSet]);
+            });
+            index.init(runtime);
+            index.uninstallModule("mixed").then(function(list) {
+                list.should.eql([nodeSet,pluginSet]);
+                emitted.should.have.property("node/removed");
+                emitted["node/removed"].should.eql([nodeSet,pluginSet]);
+                registry.uninstallModule.restore();
+                done();
+            }).catch(function(err) {
+                registry.uninstallModule.restore();
                 done(err);
             });
         });

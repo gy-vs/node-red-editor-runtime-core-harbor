@@ -1,0 +1,12 @@
+<script type="text/javascript">
+    RED.nodes.registerType('mixed-test-node',{
+        category: 'test',
+        defaults: { name: { value:"" } },
+        inputs: 1,
+        outputs: 1,
+        label: function() { return this.name||"mixed"; }
+    });
+</script>
+<script type="text/html" data-template-name="mixed-test-node">
+    <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> Name</label><input type="text" id="node-input-name"></div>
+</script>

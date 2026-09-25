@@ -1,0 +1,13 @@
+{
+  "name": "mixed-module",
+  "version": "1.0.0",
+  "description": "A test module that provides both a node and a plugin",
+  "node-red": {
+    "nodes": {
+      "mixed-node": "mixed-node.js"
+    },
+    "plugins": {
+      "mixed-plugin": "mixed-plugin.js"
+    }
+  }
+}

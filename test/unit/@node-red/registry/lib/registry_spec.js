@@ -408,6 +408,59 @@ describe("red/nodes/registry/registry",function() {
             moduleInfo.nodes[0].should.have.a.property('id','test-module/test-name');
             moduleInfo.nodes[0].should.not.have.a.property('file');
         });
+        it('returns both nodes and plugins for a module providing both', function() {
+            typeRegistry.init(settings,{});
+            typeRegistry.addModule({name: "mixed-module",version:"0.0.1",nodes: {
+                "mixed-node":{
+                    id: "mixed-module/mixed-node",
+                    module: "mixed-module",
+                    name: "mixed-node",
+                    enabled: true,
+                    loaded: true,
+                    types: [ "mixed-a","mixed-b"]
+                }
+            },plugins: {
+                "mixed-plugin":{
+                    id: "mixed-module/mixed-plugin",
+                    module: "mixed-module",
+                    name: "mixed-plugin",
+                    type: "plugin",
+                    enabled: true,
+                    plugins: [
+                        {id:"mixed-module-plugin-x",type:"foo",module:"mixed-module"}
+                    ]
+                }
+            }});
+            var moduleInfo = typeRegistry.getModuleInfo("mixed-module");
+            should.exist(moduleInfo);
+            moduleInfo.should.have.a.property('nodes');
+            moduleInfo.should.have.a.property('plugins');
+            moduleInfo.nodes.should.have.a.lengthOf(1);
+            moduleInfo.nodes[0].should.have.a.property('id','mixed-module/mixed-node');
+            moduleInfo.plugins.should.have.a.lengthOf(1);
+            moduleInfo.plugins[0].should.have.a.property('id','mixed-module/mixed-plugin');
+            moduleInfo.plugins[0].plugins.should.have.a.lengthOf(1);
+        });
+        it('returns module info with an empty node list for a plugin-only module', function() {
+            typeRegistry.init(settings,{});
+            typeRegistry.addModule({name: "plugin-only-module",version:"0.0.1",nodes: {},plugins: {
+                "po-plugin":{
+                    id: "plugin-only-module/po-plugin",
+                    module: "plugin-only-module",
+                    name: "po-plugin",
+                    type: "plugin",
+                    enabled: true,
+                    plugins: [
+                        {id:"plugin-only-x",type:"bar",module:"plugin-only-module"}
+                    ]
+                }
+            }});
+            var moduleInfo = typeRegistry.getModuleInfo("plugin-only-module");
+            should.exist(moduleInfo);
+            moduleInfo.nodes.should.have.a.lengthOf(0);
+            moduleInfo.plugins.should.have.a.lengthOf(1);
+            moduleInfo.plugins[0].should.have.a.property('id','plugin-only-module/po-plugin');
+        });
     });
     describe('#getNodeInfo', function() {
         it('returns node info', function() {
