@@ -335,6 +335,72 @@ describe("red/nodes/index", function() {
         });
     });
 
+    describe('reports installed modules', function() {
+        var events = [];
+        var utilEvents = NR_TEST_UTILS.require("@node-red/util").events;
+        function captureRuntimeEvent(evt) { events.push(evt); }
+        var runtimeWithEvents;
+        beforeEach(function() {
+            events = [];
+            runtimeWithEvents = {
+                settings: settings,
+                storage: storage,
+                log: {debug:function() {}, warn:function() {}, _: function() {}},
+                events: new EventEmitter()
+            };
+            utilEvents.on("runtime-event", captureRuntimeEvent);
+            index.init(runtimeWithEvents);
+        });
+
+        afterEach(function() {
+            utilEvents.removeListener("runtime-event", captureRuntimeEvent);
+            if (registry.installModule.restore) {
+                registry.installModule.restore();
+            }
+        });
+
+        it('emits node/added for a nodes-only module', function(done) {
+            var info = {name:"node-module",pending_version:undefined,nodes:[{id:"node-module/n"}],plugins:[]};
+            sinon.stub(registry,"installModule").callsFake(function() { return Promise.resolve(info); });
+            index.installModule("node-module").then(function(result) {
+                result.should.eql(info);
+                var topics = events.map(e => e.id);
+                topics.should.eql(["node/added"]);
+                events[0].payload.should.eql(info.nodes);
+                done();
+            }).catch(done);
+        });
+
+        it('emits plugin/added for a plugin-only module', function(done) {
+            var info = {name:"plugin-module",pending_version:undefined,nodes:[],plugins:[{id:"plugin-module/p"}]};
+            sinon.stub(registry,"installModule").callsFake(function() { return Promise.resolve(info); });
+            index.installModule("plugin-module").then(function() {
+                var topics = events.map(e => e.id);
+                topics.should.eql(["plugin/added"]);
+                events[0].payload.should.eql(info.plugins);
+                done();
+            }).catch(done);
+        });
+
+        it('emits both plugin/added and node/added for a module with nodes and plugins', function(done) {
+            var info = {
+                name:"mixed-module",
+                pending_version: undefined,
+                nodes: [{id:"mixed-module/n"}],
+                plugins: [{id:"mixed-module/p"}]
+            };
+            sinon.stub(registry,"installModule").callsFake(function() { return Promise.resolve(info); });
+            index.installModule("mixed-module").then(function() {
+                var topics = events.map(e => e.id);
+                topics.should.containEql("plugin/added");
+                topics.should.containEql("node/added");
+                events.find(e => e.id === "plugin/added").payload.should.eql(info.plugins);
+                events.find(e => e.id === "node/added").payload.should.eql(info.nodes);
+                done();
+            }).catch(done);
+        });
+    });
+
     describe('allows modules to be removed from the registry', function() {
         var randomNodeInfo = {id:"5678",types:["random"]};
         var randomModuleInfo = {

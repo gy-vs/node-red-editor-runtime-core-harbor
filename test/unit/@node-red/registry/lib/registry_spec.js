@@ -408,6 +408,59 @@ describe("red/nodes/registry/registry",function() {
             moduleInfo.nodes[0].should.have.a.property('id','test-module/test-name');
             moduleInfo.nodes[0].should.not.have.a.property('file');
         });
+        it('returns both nodes and plugins for a module that provides both', function() {
+            typeRegistry.init(settings,{});
+            typeRegistry.addModule({name: "mixed-module",version:"0.0.1",nodes: {
+                "mixed-node":{
+                    id: "mixed-module/mixed-node",
+                    module: "mixed-module",
+                    name: "mixed-node",
+                    enabled: true,
+                    loaded: false,
+                    config: "configA",
+                    types: [ "mixed-a" ],
+                    file: "abc"
+                }
+            },plugins: {
+                "mixed-plugin":{
+                    id: "mixed-module/mixed-plugin",
+                    module: "mixed-module",
+                    name: "mixed-plugin",
+                    type: "plugin",
+                    enabled: true,
+                    plugins: [
+                        {id:"the-plugin",type:"some-plugin-type",module:"mixed-module"}
+                    ]
+                }
+            }});
+            var moduleInfo = typeRegistry.getModuleInfo("mixed-module");
+            moduleInfo.should.have.a.property('nodes');
+            moduleInfo.should.have.a.property('plugins');
+            moduleInfo.nodes.should.have.a.lengthOf(1);
+            moduleInfo.plugins.should.have.a.lengthOf(1);
+            moduleInfo.nodes[0].should.have.a.property('id','mixed-module/mixed-node');
+            moduleInfo.plugins[0].should.have.a.property('id','mixed-module/mixed-plugin');
+            moduleInfo.plugins[0].plugins.should.eql([
+                {id:"the-plugin",type:"some-plugin-type",module:"mixed-module"}
+            ]);
+        });
+        it('returns a plugin-only module via getModuleInfo', function() {
+            typeRegistry.init(settings,{});
+            typeRegistry.addModule({name: "plugin-module",version:"0.0.1",nodes: {},plugins: {
+                "plugin-set":{
+                    id: "plugin-module/plugin-set",
+                    module: "plugin-module",
+                    name: "plugin-set",
+                    type: "plugin",
+                    enabled: true,
+                    plugins: []
+                }
+            }});
+            var moduleInfo = typeRegistry.getModuleInfo("plugin-module");
+            should.exist(moduleInfo);
+            moduleInfo.nodes.should.have.a.lengthOf(0);
+            moduleInfo.plugins.should.have.a.lengthOf(1);
+        });
     });
     describe('#getNodeInfo', function() {
         it('returns node info', function() {
